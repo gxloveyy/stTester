@@ -1,5 +1,6 @@
 import sqlite3
 import datetime
+import re
 
 class dataContext(object):
     """data fetcher for a filter"""
@@ -22,21 +23,37 @@ class dataContext(object):
                                  'position']
         pass
 
-    def fetchActiveContracts(self):
-        '''fetch the contracts still in market most recently, return the date and responding contracts name'''
+    def fetchActiveHotContracts(self):
+        '''fetch the hot contracts still in market most recently, return the date and responding contracts name'''
         res_list = []
         day_str = ""
         cur_day = datetime.date.today()
         delta = datetime.timedelta(days=1)
-        sql = "select contract from daily where date = ?"
+        sql = "select contract, volume from daily where date = ?"
         for i in range(0, 700):
             day_str = cur_day.isoformat().replace("-", "")
+            print("checking " + day_str)
             if self.cursor is None:
                 break
             self.cursor.execute(sql, (day_str, ))
-            res_list = self.cursor.fetchall()
-            if res_list is not None and len(res_list) > 0:
-                res_list = [con[0] for con in res_list]
+            results = self.cursor.fetchall()
+            if results is not None and len(results) > 0:
+                print('got some results:' + day_str)
+                con_vol = {con[0]:con[1] for con in results}
+                #get the hot contract based on the volume
+                max_volume = {}  # ru:17823839
+                max_contract = {} # ru:ru201504
+                for contract in con_vol.keys():
+                    variaty = ''.join([c for c in contract if c > '9'])
+                    print('variaty ' + variaty)
+                    if variaty not in max_volume:
+                        max_volume[variaty] = con_vol[contract]
+                        max_contract[variaty] = contract
+                    elif max_volume[variaty] < con_vol[contract]:
+                        max_volume[variaty] = con_vol[contract]
+                        max_contract[variaty] = contract
+                res_list = max_contract.values()
+                print(max_contract)
                 break
             cur_day = cur_day - delta
         return (day_str, res_list)

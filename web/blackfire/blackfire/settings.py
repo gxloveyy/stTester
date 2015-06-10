@@ -82,7 +82,7 @@ DATABASES = {
     },
     'future_filter': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': 'C:\\projects\\stTester\\data\\filter.sqlitedb',
+        'NAME': 'E:\\projects\\ooooooooo\\stTester\\stTester\\data\\filter.sqlitedb',
     },
 }
 

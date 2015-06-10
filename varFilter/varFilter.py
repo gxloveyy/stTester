@@ -7,7 +7,7 @@ import sqlite3
 import os
 import datetime
 
-from HaiGuiFilter.HGFilter import HGFilter
+import filters.allFilters as ff
 
 ###############################################################################################
 # base class for future filter
@@ -16,11 +16,11 @@ class FilterContext():
     def __init__(self, data_context, filter_db_file):
         self.data_context = data_context
         # init each filters
-        self.filters = [HGFilter(self.data_context)]
+        self.filters = ff.instances(self.data_context)
         # database handle
         self.filter_conn = sqlite3.connect(filter_db_file)
         self.filter_cursor = self.filter_conn.cursor()
-        self.filter_sql = '''insert into filter_result values(?,?,?)'''
+        self.filter_sql = '''insert into filter_result values(?,?,?,?,?)'''
         pass
 
     def check(self):
@@ -29,21 +29,25 @@ class FilterContext():
             return False
         sql = '''create table if not exists filter_result (
                     filter_name,
-                    date,
+                    date asc,
                     contract,
+                    index_v,
+                    direction,
                     primary key (filter_name, date asc, contract))'''
         self.filter_cursor.execute(sql)
         self.filter_conn.commit()
         return True
     
     def filter(self):
-        day = ''
+        day, active_contracts = self.data_context.fetchActiveHotContracts()
         for filter in self.filters:
-            day, active_contracts = self.data_context.fetchActiveContracts()
             for contract in active_contracts:
-                qualified = filter.check(contract)
-                if qualified:
+                (order,index) = filter.check(contract)
+                if order != 'none':
                     # import qualified into databases
-                    self.filter_cursor.execute(self.filter_sql, (filter.name, day, contract))
-                    self.filter_conn.commit()
+                    try:
+                        self.filter_cursor.execute(self.filter_sql, (filter.name, day, contract, index, order))
+                        self.filter_conn.commit()
+                    except Exception, e:
+                        print('Exception caught while insert a filter result record')
         return
